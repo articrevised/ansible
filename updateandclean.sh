@@ -1,31 +1,55 @@
-#!/bin/bash
+---
+- name: Update system and clean up
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update package list
+      apt:
+        update_cache: yes
 
-# Update the package list
-echo "Updating package list..."
-sudo apt-get update -y
+    - name: Upgrade installed packages
+      apt:
+        upgrade: dist
+        cache_valid_time: 3600
 
-# Upgrade installed packages
-echo "Upgrading installed packages..."
-sudo apt-get upgrade -y
+    - name: Remove unnecessary packages and dependencies
+      apt:
+        autoremove: yes
 
-# Remove unnecessary packages and dependencies
-echo "Removing unnecessary packages and dependencies..."
-sudo apt-get autoremove -y
+    - name: Clean up package cache
+      apt:
+        autoclean: yes
 
-# Clean up package cache
-echo "Cleaning up package cache..."
-sudo apt-get autoclean -y
+    - name: Clear temporary files
+      file:
+        path: /tmp
+        state: absent
 
-# Clear temporary files
-echo "Clearing temporary files..."
-sudo rm -rf /tmp/*
+    - name: Recreate /tmp directory
+      file:
+        path: /tmp
+        state: directory
+        mode: '1777'
 
-# Clear system cache
-echo "Clearing system cache..."
-sudo sync && sudo sysctl -w vm.drop_caches=3
+    - name: Clear system cache
+      command: sync
+      changed_when: false
 
-# Clear user cache
-echo "Clearing user cache..."
-rm -rf ~/.cache/*
+    - name: Drop system caches
+      command: sysctl -w vm.drop_caches=3
+      changed_when: false
 
-echo "System update and cleanup complete!"
+    - name: Clear user cache
+      file:
+        path: "{{ ansible_user_dir }}/.cache"
+        state: absent
+
+    - name: Recreate user cache directory
+      file:
+        path: "{{ ansible_user_dir }}/.cache"
+        state: directory
+        mode: '0755'
+
+    - name: Print completion message
+      debug:
+        msg: "System update and cleanup complete!"
